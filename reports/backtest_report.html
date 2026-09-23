@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha Catalyst Momentum v2 — Backtest Report</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232736;
+    --border: #2e3348;
+    --text: #e2e4ed;
+    --text-dim: #8b8fa3;
+    --accent: #6c5ce7;
+    --green: #00d68f;
+    --red: #ff6b6b;
+    --amber: #ffd93d;
+    --blue: #4ecdc4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 24px 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 32px; }
+  .badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .badge-pass { background: rgba(0,214,143,0.15); color: var(--green); border: 1px solid rgba(0,214,143,0.3); }
+  .header-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .kpi-value { font-size: 1.5rem; font-weight: 700; margin-bottom: 2px; }
+  .kpi-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-positive { color: var(--green); }
+  .kpi-negative { color: var(--red); }
+  .kpi-neutral { color: var(--blue); }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .chart-wrap { width: 100%; overflow-x: auto; }
+  .chart-wrap svg { display: block; margin: 0 auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-dim); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  td:first-child, th:first-child { text-align: left; }
+  tr:last-child td { border-bottom: none; }
+  .pnl-pos { color: var(--green); }
+  .pnl-neg { color: var(--red); }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px 24px;
+  }
+  .config-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .config-item span:first-child { color: var(--text-dim); }
+  .config-item span:last-child { font-weight: 600; }
+
+  .validation-box { background: var(--surface2); border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+  .validation-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 0.9rem; }
+  .validation-row + .validation-row { border-top: 1px solid var(--border); }
+  .check { color: var(--green); font-weight: 700; }
+
+  .footer {
+    text-align: center; color: var(--text-dim); font-size: 0.75rem;
+    margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border);
+  }
+
+  .tooltip-box {
+    position: absolute; pointer-events: none; opacity: 0;
+    background: #1a1d27; border: 1px solid #2e3348; border-radius: 6px;
+    padding: 6px 10px; font-size: 0.78rem; color: #e2e4ed;
+    white-space: nowrap; transition: opacity 0.15s; z-index: 10;
+  }
+  .chart-area { position: relative; }
+</style>
+</head>
+<body>
+
+<div class="header-row">
+  <h1>Alpha Catalyst Momentum v2</h1>
+  <span class="badge badge-pass">&#10003; VALIDATION PASS</span>
+</div>
+<p class="subtitle">Bitget AI Hackathon S2 — Track 1: Alpha Factory &nbsp;|&nbsp; Backtest Report &nbsp;|&nbsp; Generated 2026-09-23</p>
+
+<!-- KPI Summary -->
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-value kpi-positive">+7.46%</div><div class="kpi-label">Total Return</div></div>
+  <div class="kpi"><div class="kpi-value kpi-neutral">0.67</div><div class="kpi-label">Sharpe Ratio</div></div>
+  <div class="kpi"><div class="kpi-value kpi-neutral">0.99</div><div class="kpi-label">Sortino Ratio</div></div>
+  <div class="kpi"><div class="kpi-value kpi-negative">-8.71%</div><div class="kpi-label">Max Drawdown</div></div>
+  <div class="kpi"><div class="kpi-value kpi-neutral">54.55%</div><div class="kpi-label">Win Rate</div></div>
+  <div class="kpi"><div class="kpi-value kpi-neutral">11</div><div class="kpi-label">Total Trades</div></div>
+  <div class="kpi"><div class="kpi-value kpi-positive">1.28</div><div class="kpi-label">OOS/IS Sharpe</div></div>
+  <div class="kpi"><div class="kpi-value kpi-neutral">3.34</div><div class="kpi-label">Profit Factor</div></div>
+</div>
+
+<!-- Equity Curve -->
+<div class="section">
+  <h2>Equity Curve</h2>
+  <div class="chart-area">
+    <div class="chart-wrap" id="equityChartWrap"></div>
+    <div class="tooltip-box" id="eqTooltip"></div>
+  </div>
+</div>
+
+<!-- Rolling 30-day Sharpe -->
+<div class="section">
+  <h2>Rolling 30-Day Sharpe Ratio</h2>
+  <div class="chart-area">
+    <div class="chart-wrap" id="sharpeChartWrap"></div>
+    <div class="tooltip-box" id="rsTooltip"></div>
+  </div>
+</div>
+
+<!-- Metrics Table -->
+<div class="section">
+  <h2>Performance Metrics</h2>
+  <div style="overflow-x:auto;">
+  <table>
+    <thead><tr><th>Metric</th><th>Full (90d)</th><th>In-Sample (60d)</th><th>Out-of-Sample (30d)</th></tr></thead>
+    <tbody>
+      <tr><td>Total Return</td><td class="pnl-pos">+7.46%</td><td class="pnl-pos">+3.29%</td><td class="pnl-pos">+4.03%</td></tr>
+      <tr><td>Annualized Return</td><td class="pnl-pos">+22.30%</td><td class="pnl-pos">+14.58%</td><td class="pnl-pos">+39.35%</td></tr>
+      <tr><td>Sharpe Ratio (ann.)</td><td>0.6659</td><td>0.6510</td><td>0.8351</td></tr>
+      <tr><td>Sortino Ratio (ann.)</td><td>0.9869</td><td>1.0333</td><td>1.2205</td></tr>
+      <tr><td>Max Drawdown</td><td class="pnl-neg">-8.71%</td><td class="pnl-neg">-5.56%</td><td class="pnl-neg">-8.71%</td></tr>
+      <tr><td>Win Rate</td><td>54.55%</td><td>0.00%</td><td>66.67%</td></tr>
+      <tr><td>Total Trades</td><td>11</td><td>2</td><td>9</td></tr>
+      <tr><td>Turnover</td><td>3.91</td><td>1.50</td><td>2.37</td></tr>
+      <tr><td>Profit Factor</td><td>3.34</td><td>0.00</td><td>8.68</td></tr>
+      <tr><td>Avg Trade P&amp;L</td><td class="pnl-pos">$134.74</td><td class="pnl-neg">-$195.47</td><td class="pnl-pos">$208.12</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Validation -->
+<div class="section">
+  <h2>Validation Checks</h2>
+  <div class="validation-box">
+    <div class="validation-row"><span>Backtest &#8805; 60 trading days</span><span class="check">&#10003; 90 days</span></div>
+    <div class="validation-row"><span>OOS &#8805; 30 trading days</span><span class="check">&#10003; 30 days</span></div>
+    <div class="validation-row"><span>OOS Sharpe &#247; IS Sharpe &#8805; 0.50</span><span class="check">&#10003; 1.2828</span></div>
+    <div class="validation-row"><span>Equity curve uses ISO 8601 dates</span><span class="check">&#10003; YYYY-MM-DD</span></div>
+    <div class="validation-row"><span>All 8 required metrics reported</span><span class="check">&#10003; Complete</span></div>
+    <div class="validation-row"><span>Slippage applied (5 bps)</span><span class="check">&#10003; Both entry &amp; exit</span></div>
+    <div class="validation-row"><span>Long-only constraint</span><span class="check">&#10003; No short positions</span></div>
+  </div>
+</div>
+
+<!-- Trade Log -->
+<div class="section">
+  <h2>Trade Log (11 round-trip trades across 4 rebalance cycles + 1 stop-loss exit)</h2>
+  <div style="overflow-x:auto;">
+  <table id="tradeTable">
+    <thead><tr><th>Date</th><th>Symbol</th><th>Action</th><th>Price</th><th>Shares</th><th>Value</th><th>P&amp;L</th><th>Days Held</th><th>Reason</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Configuration -->
+<div class="section">
+  <h2>Strategy Configuration</h2>
+  <div class="config-grid">
+    <div class="config-item"><span>Strategy</span><span>Momentum Rotation</span></div>
+    <div class="config-item"><span>Starting Capital</span><span>$20,000</span></div>
+    <div class="config-item"><span>Rebalance Freq</span><span>Every 20 days</span></div>
+    <div class="config-item"><span>Max Positions</span><span>5 simultaneous</span></div>
+    <div class="config-item"><span>Investment %</span><span>90% (~$3,600/pos)</span></div>
+    <div class="config-item"><span>Position Stop-Loss</span><span>8.5% (3-day grace)</span></div>
+    <div class="config-item"><span>Cooling-Off Period</span><span>5 days</span></div>
+    <div class="config-item"><span>Slippage</span><span>5 bps / trade</span></div>
+    <div class="config-item"><span>Commissions</span><span>$0</span></div>
+    <div class="config-item"><span>Direction</span><span>Long Only</span></div>
+    <div class="config-item"><span>Risk-Free Rate</span><span>5.0% (3-mo T-bill)</span></div>
+    <div class="config-item"><span>Symbols</span><span>9 Bitget rTokens</span></div>
+  </div>
+</div>
+
+<!-- Symbol Universe -->
+<div class="section">
+  <h2>Symbol Universe</h2>
+  <div style="overflow-x:auto;">
+  <table>
+    <thead><tr><th>rToken</th><th>Underlying</th><th>Sector</th></tr></thead>
+    <tbody>
+      <tr><td>RAAPLUSDT</td><td>Apple Inc. (AAPL)</td><td>Technology</td></tr>
+      <tr><td>RMSFTUSDT</td><td>Microsoft Corp. (MSFT)</td><td>Technology</td></tr>
+      <tr><td>RNVDAUSDT</td><td>NVIDIA Corp. (NVDA)</td><td>Semiconductors</td></tr>
+      <tr><td>RTSLAUSDT</td><td>Tesla Inc. (TSLA)</td><td>Auto / EV</td></tr>
+      <tr><td>RAMZNUSDT</td><td>Amazon.com (AMZN)</td><td>E-Commerce / Cloud</td></tr>
+      <tr><td>RMETAUSDT</td><td>Meta Platforms (META)</td><td>Social / AI</td></tr>
+      <tr><td>RAVGOUSDT</td><td>Broadcom Inc. (AVGO)</td><td>Semiconductors</td></tr>
+      <tr><td>RCRMUSDT</td><td>Salesforce (CRM)</td><td>Enterprise SaaS</td></tr>
+      <tr><td>RCOSTUSDT</td><td>Costco (COST)</td><td>Retail</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="footer">
+  Alpha Catalyst Momentum v2 &nbsp;|&nbsp; Bitget AI Hackathon Season 2 &nbsp;|&nbsp; Track 1: Alpha Factory<br>
+  Data source: Bitget REST API (daily OHLCV) &nbsp;|&nbsp; Engine: Python 3 custom backtest
+</div>
+
+<script>
+// ── DATA ──
+var equityCurve = [
+  {d:"2026-06-24",e:20000.00},{d:"2026-06-25",e:20000.00},{d:"2026-06-26",e:20000.00},{d:"2026-06-27",e:20000.00},
+  {d:"2026-06-28",e:20000.00},{d:"2026-06-29",e:20000.00},{d:"2026-06-30",e:20000.00},{d:"2026-07-01",e:20000.00},
+  {d:"2026-07-02",e:20000.00},{d:"2026-07-03",e:20000.00},{d:"2026-07-04",e:20000.00},{d:"2026-07-05",e:20000.00},
+  {d:"2026-07-06",e:20000.00},{d:"2026-07-07",e:20000.00},{d:"2026-07-08",e:20000.00},{d:"2026-07-09",e:20000.00},
+  {d:"2026-07-10",e:20000.00},{d:"2026-07-11",e:20000.00},{d:"2026-07-12",e:20000.00},{d:"2026-07-13",e:20000.00},
+  {d:"2026-07-14",e:20503.85},{d:"2026-07-15",e:20550.67},{d:"2026-07-16",e:20128.06},{d:"2026-07-17",e:20104.64},
+  {d:"2026-07-18",e:20108.66},{d:"2026-07-19",e:20244.04},{d:"2026-07-20",e:20213.01},{d:"2026-07-21",e:20073.14},
+  {d:"2026-07-22",e:19573.96},{d:"2026-07-23",e:19790.06},{d:"2026-07-24",e:19566.79},{d:"2026-07-25",e:19672.02},
+  {d:"2026-07-26",e:19605.45},{d:"2026-07-27",e:19704.51},{d:"2026-07-28",e:19535.14},{d:"2026-07-29",e:20095.41},
+  {d:"2026-07-30",e:20363.36},{d:"2026-07-31",e:20461.78},{d:"2026-08-01",e:20517.34},{d:"2026-08-02",e:21007.81},
+  {d:"2026-08-03",e:21353.76},{d:"2026-08-04",e:21397.81},{d:"2026-08-05",e:21371.80},{d:"2026-08-06",e:21731.94},
+  {d:"2026-08-07",e:21688.28},{d:"2026-08-08",e:21646.84},{d:"2026-08-09",e:21875.80},{d:"2026-08-10",e:21629.33},
+  {d:"2026-08-11",e:21467.27},{d:"2026-08-12",e:21493.46},{d:"2026-08-13",e:21386.41},{d:"2026-08-14",e:21335.38},
+  {d:"2026-08-15",e:21198.87},{d:"2026-08-16",e:21175.33},{d:"2026-08-17",e:20976.18},{d:"2026-08-18",e:21121.78},
+  {d:"2026-08-19",e:20949.37},{d:"2026-08-20",e:21072.85},{d:"2026-08-21",e:21000.07},{d:"2026-08-22",e:20658.77},
+  {d:"2026-08-23",e:20972.51},{d:"2026-08-24",e:20850.18},{d:"2026-08-25",e:20684.77},{d:"2026-08-26",e:21554.18},
+  {d:"2026-08-27",e:22125.06},{d:"2026-08-28",e:22039.00},{d:"2026-08-29",e:20716.95},{d:"2026-08-30",e:22194.73},
+  {d:"2026-08-31",e:21903.02},{d:"2026-09-01",e:21655.82},{d:"2026-09-02",e:22388.26},{d:"2026-09-03",e:21781.26},
+  {d:"2026-09-04",e:21832.07},{d:"2026-09-05",e:20528.45},{d:"2026-09-06",e:20494.69},{d:"2026-09-07",e:21656.71},
+  {d:"2026-09-08",e:21560.39},{d:"2026-09-09",e:21469.28},{d:"2026-09-10",e:21597.21},{d:"2026-09-11",e:21604.86},
+  {d:"2026-09-12",e:20437.73},{d:"2026-09-13",e:20717.15},{d:"2026-09-14",e:20659.12},{d:"2026-09-15",e:20708.56},
+  {d:"2026-09-16",e:20843.40},{d:"2026-09-17",e:20699.66},{d:"2026-09-18",e:20703.50},{d:"2026-09-19",e:20708.70},
+  {d:"2026-09-20",e:21205.62},{d:"2026-09-21",e:21482.19}
+];
+
+var rollingSharpe = [
+  {d:"2026-07-23",s:-1.0175},{d:"2026-07-24",s:-1.7044},{d:"2026-07-25",s:-1.3510},{d:"2026-07-26",s:-1.5612},
+  {d:"2026-07-27",s:-1.2343},{d:"2026-07-28",s:-1.7442},{d:"2026-07-29",s:0.0155},{d:"2026-07-30",s:0.6915},
+  {d:"2026-07-31",s:0.9343},{d:"2026-08-01",s:1.0713},{d:"2026-08-02",s:2.1170},{d:"2026-08-03",s:2.8126},
+  {d:"2026-08-04",s:2.9088},{d:"2026-08-05",s:2.8506},{d:"2026-08-06",s:3.5318},{d:"2026-08-07",s:3.4358},
+  {d:"2026-08-08",s:3.3451},{d:"2026-08-09",s:3.7915},{d:"2026-08-10",s:3.2210},{d:"2026-08-11",s:2.8668},
+  {d:"2026-08-12",s:2.9203},{d:"2026-08-13",s:1.7296},{d:"2026-08-14",s:1.5156},{d:"2026-08-15",s:2.2818},
+  {d:"2026-08-16",s:2.2844},{d:"2026-08-17",s:1.7948},{d:"2026-08-18",s:1.8041},{d:"2026-08-19",s:1.4757},
+  {d:"2026-08-20",s:2.0860},{d:"2026-08-21",s:3.4271},{d:"2026-08-22",s:1.9307},{d:"2026-08-23",s:3.2521},
+  {d:"2026-08-24",s:2.6702},{d:"2026-08-25",s:2.4198},{d:"2026-08-26",s:3.5011},{d:"2026-08-27",s:4.7486},
+  {d:"2026-08-28",s:3.6765},{d:"2026-08-29",s:0.4816},{d:"2026-08-30",s:2.0292},{d:"2026-08-31",s:1.6217},
+  {d:"2026-09-01",s:0.7683},{d:"2026-09-02",s:1.1631},{d:"2026-09-03",s:0.4483},{d:"2026-09-04",s:0.5314},
+  {d:"2026-09-05",s:-1.1418},{d:"2026-09-06",s:-1.1341},{d:"2026-09-07",s:0.0999},{d:"2026-09-08",s:-0.1936},
+  {d:"2026-09-09",s:-0.0561},{d:"2026-09-10",s:0.2076},{d:"2026-09-11",s:0.1906},{d:"2026-09-12",s:-0.7235},
+  {d:"2026-09-13",s:-0.4262},{d:"2026-09-14",s:-0.3605},{d:"2026-09-15",s:-0.2962},{d:"2026-09-16",s:-0.0045},
+  {d:"2026-09-17",s:-0.2584},{d:"2026-09-18",s:-0.1053},{d:"2026-09-19",s:-0.2092},{d:"2026-09-20",s:0.2922},
+  {d:"2026-09-21",s:0.8351}
+];
+
+var trades = [
+  {date:"2026-07-14",sym:"RAMZNUSDT",action:"BUY",price:245.62,shares:14,value:3438.72,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-07-14",sym:"RNVDAUSDT",action:"BUY",price:209.34,shares:17,value:3558.77,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-07-14",sym:"RMSFTUSDT",action:"BUY",price:384.95,shares:9,value:3464.57,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-07-14",sym:"RAAPLUSDT",action:"BUY",price:313.40,shares:11,value:3447.36,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-07-14",sym:"RMETAUSDT",action:"BUY",price:656.76,shares:5,value:3283.79,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-07-24",sym:"RMETAUSDT",action:"SELL",price:594.43,shares:5,value:2972.16,pnl:-311.63,days:10,reason:"stop_loss"},
+  {date:"2026-08-03",sym:"RAAPLUSDT",action:"SELL",price:306.19,shares:11,value:3368.06,pnl:-79.31,days:20,reason:"rotation"},
+  {date:"2026-08-03",sym:"RAVGOUSDT",action:"BUY",price:388.51,shares:9,value:3496.63,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-08-03",sym:"RCRMUSDT",action:"BUY",price:188.93,shares:20,value:3778.69,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-08-23",sym:"RNVDAUSDT",action:"SELL",price:210.13,shares:17,value:3572.29,pnl:13.52,days:40,reason:"rotation"},
+  {date:"2026-08-23",sym:"RAVGOUSDT",action:"SELL",price:361.80,shares:9,value:3256.19,pnl:-240.44,days:20,reason:"rotation"},
+  {date:"2026-08-23",sym:"RCOSTUSDT",action:"BUY",price:948.20,shares:3,value:2844.61,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-08-23",sym:"RTSLAUSDT",action:"BUY",price:362.72,shares:10,value:3627.21,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-09-12",sym:"RAMZNUSDT",action:"SELL",price:256.71,shares:14,value:3593.96,pnl:155.24,days:60,reason:"rotation"},
+  {date:"2026-09-12",sym:"RCRMUSDT",action:"SELL",price:188.84,shares:20,value:3776.80,pnl:-1.89,days:40,reason:"rotation"},
+  {date:"2026-09-12",sym:"RCOSTUSDT",action:"SELL",price:947.73,shares:3,value:2843.19,pnl:-1.42,days:20,reason:"rotation"},
+  {date:"2026-09-12",sym:"RMETAUSDT",action:"BUY",price:648.92,shares:7,value:4542.47,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-09-12",sym:"RAAPLUSDT",action:"BUY",price:333.02,shares:13,value:4329.21,pnl:null,days:null,reason:"rotation"},
+  {date:"2026-09-21",sym:"RMSFTUSDT",action:"SELL",price:503.73,shares:9,value:4533.55,pnl:1068.98,days:69,reason:"end_of_backtest"},
+  {date:"2026-09-21",sym:"RTSLAUSDT",action:"SELL",price:376.51,shares:10,value:3765.12,pnl:137.90,days:29,reason:"end_of_backtest"},
+  {date:"2026-09-21",sym:"RMETAUSDT",action:"SELL",price:742.94,shares:7,value:5200.57,pnl:658.10,days:9,reason:"end_of_backtest"},
+  {date:"2026-09-21",sym:"RAAPLUSDT",action:"SELL",price:339.41,shares:13,value:4412.35,pnl:83.13,days:9,reason:"end_of_backtest"}
+];
+
+// ── IS/OOS boundary ──
+var IS_END = "2026-08-22";
+
+// ── SVG LINE CHART (Equity Curve) ──
+(function() {
+  var W = 1100, H = 320, PAD_L = 70, PAD_R = 20, PAD_T = 20, PAD_B = 50;
+  var cw = W - PAD_L - PAD_R, ch = H - PAD_T - PAD_B;
+  var n = equityCurve.length;
+  var vals = equityCurve.map(function(p){return p.e;});
+  var yMin = Math.floor(Math.min.apply(null, vals) / 100) * 100;
+  var yMax = Math.ceil(Math.max.apply(null, vals) / 100) * 100;
+  var yRange = yMax - yMin || 1;
+
+  function x(i) { return PAD_L + (i / (n - 1)) * cw; }
+  function y(v) { return PAD_T + ch - ((v - yMin) / yRange) * ch; }
+
+  // IS/OOS split index
+  var splitIdx = 0;
+  for (var i = 0; i < n; i++) { if (equityCurve[i].d > IS_END) { splitIdx = i; break; } }
+
+  // Build path strings
+  var isPath = "M" + x(0) + "," + y(vals[0]);
+  for (var i = 1; i <= splitIdx; i++) isPath += " L" + x(i) + "," + y(vals[i]);
+
+  var oosPath = "M" + x(splitIdx) + "," + y(vals[splitIdx]);
+  for (var i = splitIdx + 1; i < n; i++) oosPath += " L" + x(i) + "," + y(vals[i]);
+
+  // Fill areas
+  var isFill = isPath + " L" + x(splitIdx) + "," + (PAD_T + ch) + " L" + x(0) + "," + (PAD_T + ch) + " Z";
+  var oosFill = oosPath + " L" + x(n-1) + "," + (PAD_T + ch) + " L" + x(splitIdx) + "," + (PAD_T + ch) + " Z";
+
+  // Y-axis ticks
+  var yTicks = [];
+  var step = 500;
+  for (var v = yMin; v <= yMax; v += step) yTicks.push(v);
+
+  // X-axis labels (every ~15 points)
+  var xLabels = [];
+  var xStep = Math.max(1, Math.floor(n / 7));
+  for (var i = 0; i < n; i += xStep) xLabels.push(i);
+  if (xLabels[xLabels.length-1] !== n-1) xLabels.push(n-1);
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'">';
+
+  // Grid lines
+  for (var j = 0; j < yTicks.length; j++) {
+    var yy = y(yTicks[j]);
+    svg += '<line x1="'+PAD_L+'" y1="'+yy+'" x2="'+(W-PAD_R)+'" y2="'+yy+'" stroke="#2e3348" stroke-width="1"/>';
+    svg += '<text x="'+(PAD_L-8)+'" y="'+(yy+4)+'" fill="#8b8fa3" font-size="11" text-anchor="end">$'+yTicks[j].toLocaleString()+'</text>';
+  }
+
+  // IS/OOS divider
+  var divX = x(splitIdx);
+  svg += '<line x1="'+divX+'" y1="'+PAD_T+'" x2="'+divX+'" y2="'+(PAD_T+ch)+'" stroke="#ffd93d" stroke-width="1.5" stroke-dasharray="6,4"/>';
+  svg += '<text x="'+(divX-4)+'" y="'+(PAD_T+14)+'" fill="#ffd93d" font-size="10" text-anchor="end">IS</text>';
+  svg += '<text x="'+(divX+4)+'" y="'+(PAD_T+14)+'" fill="#4ecdc4" font-size="10" text-anchor="start">OOS</text>';
+
+  // Fill areas
+  svg += '<path d="'+isFill+'" fill="rgba(108,92,231,0.12)"/>';
+  svg += '<path d="'+oosFill+'" fill="rgba(78,205,196,0.12)"/>';
+
+  // Lines
+  svg += '<path d="'+isPath+'" fill="none" stroke="#6c5ce7" stroke-width="2.5" stroke-linejoin="round"/>';
+  svg += '<path d="'+oosPath+'" fill="none" stroke="#4ecdc4" stroke-width="2.5" stroke-linejoin="round"/>';
+
+  // $20k baseline
+  svg += '<line x1="'+PAD_L+'" y1="'+y(20000)+'" x2="'+(W-PAD_R)+'" y2="'+y(20000)+'" stroke="#8b8fa3" stroke-width="1" stroke-dasharray="3,3"/>';
+
+  // X-axis labels
+  for (var j = 0; j < xLabels.length; j++) {
+    var idx = xLabels[j];
+    var lbl = equityCurve[idx].d.substring(5); // MM-DD
+    svg += '<text x="'+x(idx)+'" y="'+(H - 10)+'" fill="#8b8fa3" font-size="11" text-anchor="middle">'+lbl+'</text>';
+  }
+
+  // Hover targets (invisible rects for tooltips)
+  var barW = cw / n;
+  for (var i = 0; i < n; i++) {
+    svg += '<rect x="'+(x(i) - barW/2)+'" y="'+PAD_T+'" width="'+barW+'" height="'+ch+'" fill="transparent" data-eq-idx="'+i+'"/>';
+  }
+
+  // Dot for hover
+  svg += '<circle id="eqDot" cx="0" cy="0" r="4" fill="#e2e4ed" stroke="#0f1117" stroke-width="2" style="display:none"/>';
+  svg += '<line id="eqVLine" x1="0" y1="'+PAD_T+'" x2="0" y2="'+(PAD_T+ch)+'" stroke="#8b8fa3" stroke-width="1" stroke-dasharray="3,2" style="display:none"/>';
+
+  svg += '</svg>';
+  document.getElementById('equityChartWrap').innerHTML = svg;
+
+  // Tooltips
+  var eqSvg = document.querySelector('#equityChartWrap svg');
+  var tip = document.getElementById('eqTooltip');
+  var dot = document.getElementById('eqDot');
+  var vline = document.getElementById('eqVLine');
+
+  eqSvg.addEventListener('mousemove', function(ev) {
+    var rect = eqSvg.getBoundingClientRect();
+    var mx = ev.clientX - rect.left;
+    var scale = W / rect.width;
+    var sx = mx * scale;
+    var idx = Math.round(((sx - PAD_L) / cw) * (n - 1));
+    if (idx < 0) idx = 0; if (idx >= n) idx = n - 1;
+    var pt = equityCurve[idx];
+    var px = x(idx), py = y(pt.e);
+    dot.setAttribute('cx', px); dot.setAttribute('cy', py); dot.style.display = '';
+    vline.setAttribute('x1', px); vline.setAttribute('x2', px); vline.style.display = '';
+    var ret = ((pt.e - 20000) / 20000 * 100).toFixed(2);
+    var sign = ret >= 0 ? '+' : '';
+    tip.innerHTML = '<b>' + pt.d + '</b><br>$' + pt.e.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' (' + sign + ret + '%)';
+    tip.style.opacity = '1';
+    var tipX = ev.clientX - eqSvg.closest('.chart-area').getBoundingClientRect().left + 12;
+    var tipY = ev.clientY - eqSvg.closest('.chart-area').getBoundingClientRect().top - 10;
+    tip.style.left = tipX + 'px'; tip.style.top = tipY + 'px';
+  });
+  eqSvg.addEventListener('mouseleave', function() {
+    dot.style.display = 'none'; vline.style.display = 'none'; tip.style.opacity = '0';
+  });
+})();
+
+
+// ── SVG BAR CHART (Rolling Sharpe) ──
+(function() {
+  var W = 1100, H = 300, PAD_L = 60, PAD_R = 20, PAD_T = 20, PAD_B = 50;
+  var cw = W - PAD_L - PAD_R, ch = H - PAD_T - PAD_B;
+  var n = rollingSharpe.length;
+  var vals = rollingSharpe.map(function(p){return p.s;});
+  var yMin = Math.floor(Math.min.apply(null, vals)) - 1;
+  var yMax = Math.ceil(Math.max.apply(null, vals)) + 1;
+  var yRange = yMax - yMin || 1;
+
+  function xPos(i) { return PAD_L + (i / n) * cw; }
+  function yPos(v) { return PAD_T + ch - ((v - yMin) / yRange) * ch; }
+  var barW = Math.max(2, (cw / n) - 1.5);
+  var zeroY = yPos(0);
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'">';
+
+  // Y-axis
+  for (var v = yMin; v <= yMax; v++) {
+    var yy = yPos(v);
+    svg += '<line x1="'+PAD_L+'" y1="'+yy+'" x2="'+(W-PAD_R)+'" y2="'+yy+'" stroke="#2e3348" stroke-width="1"/>';
+    svg += '<text x="'+(PAD_L-8)+'" y="'+(yy+4)+'" fill="#8b8fa3" font-size="11" text-anchor="end">'+v+'</text>';
+  }
+
+  // Zero line
+  svg += '<line x1="'+PAD_L+'" y1="'+zeroY+'" x2="'+(W-PAD_R)+'" y2="'+zeroY+'" stroke="#8b8fa3" stroke-width="1.5"/>';
+
+  // Bars
+  for (var i = 0; i < n; i++) {
+    var v = vals[i];
+    var bx = xPos(i) + 1;
+    var by, bh;
+    if (v >= 0) { by = yPos(v); bh = zeroY - by; }
+    else { by = zeroY; bh = yPos(v) - zeroY; }
+    var col = v >= 0 ? 'rgba(0,214,143,0.75)' : 'rgba(255,107,107,0.75)';
+    svg += '<rect x="'+bx+'" y="'+by+'" width="'+barW+'" height="'+Math.max(1,bh)+'" fill="'+col+'" rx="1" data-rs-idx="'+i+'"/>';
+  }
+
+  // X-axis labels
+  var xStep = Math.max(1, Math.floor(n / 7));
+  for (var i = 0; i < n; i += xStep) {
+    var lbl = rollingSharpe[i].d.substring(5);
+    svg += '<text x="'+(xPos(i)+barW/2)+'" y="'+(H-10)+'" fill="#8b8fa3" font-size="11" text-anchor="middle">'+lbl+'</text>';
+  }
+
+  svg += '</svg>';
+  document.getElementById('sharpeChartWrap').innerHTML = svg;
+
+  // Tooltips
+  var rsSvg = document.querySelector('#sharpeChartWrap svg');
+  var rsTip = document.getElementById('rsTooltip');
+  rsSvg.addEventListener('mousemove', function(ev) {
+    var rect = rsSvg.getBoundingClientRect();
+    var mx = ev.clientX - rect.left;
+    var scale = W / rect.width;
+    var sx = mx * scale;
+    var idx = Math.floor(((sx - PAD_L) / cw) * n);
+    if (idx < 0) idx = 0; if (idx >= n) idx = n - 1;
+    var pt = rollingSharpe[idx];
+    rsTip.innerHTML = '<b>' + pt.d + '</b><br>Sharpe: ' + pt.s.toFixed(4);
+    rsTip.style.opacity = '1';
+    var tipX = ev.clientX - rsSvg.closest('.chart-area').getBoundingClientRect().left + 12;
+    var tipY = ev.clientY - rsSvg.closest('.chart-area').getBoundingClientRect().top - 10;
+    rsTip.style.left = tipX + 'px'; rsTip.style.top = tipY + 'px';
+  });
+  rsSvg.addEventListener('mouseleave', function() { rsTip.style.opacity = '0'; });
+})();
+
+
+// ── TRADE TABLE ──
+(function() {
+  var tbody = document.querySelector('#tradeTable tbody');
+  trades.forEach(function(t) {
+    var tr = document.createElement('tr');
+    var pnlClass = t.pnl === null ? '' : (t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg');
+    var pnlStr = t.pnl === null ? '-' : (t.pnl >= 0 ? '+$' + t.pnl.toFixed(2) : '-$' + Math.abs(t.pnl).toFixed(2));
+    var actionStyle = t.action === 'BUY' ? 'color:#4ecdc4' : 'color:#ffd93d';
+    var reasonStyle = t.reason === 'stop_loss' ? 'color:#ff6b6b;font-weight:600' : 'color:#8b8fa3';
+    tr.innerHTML =
+      '<td>' + t.date + '</td>' +
+      '<td>' + t.sym.replace('USDT','') + '</td>' +
+      '<td style="' + actionStyle + ';font-weight:600">' + t.action + '</td>' +
+      '<td>$' + t.price.toFixed(2) + '</td>' +
+      '<td>' + t.shares + '</td>' +
+      '<td>$' + t.value.toLocaleString('en-US',{minimumFractionDigits:2}) + '</td>' +
+      '<td class="' + pnlClass + '">' + pnlStr + '</td>' +
+      '<td>' + (t.days === null ? '-' : t.days + 'd') + '</td>' +
+      '<td style="' + reasonStyle + '">' + t.reason + '</td>';
+    tbody.appendChild(tr);
+  });
+})();
+</script>
+</body>
+</html>
