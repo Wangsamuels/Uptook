@@ -41,6 +41,23 @@ Weekly-rebalancing momentum rotation across 9 Bitget rTokens:
 | RCRMUSDT | Salesforce (CRM) | Enterprise SaaS |
 | RCOSTUSDT | Costco (COST) | Retail |
 
+## Live Signal Agent
+
+The signal agent fetches fresh OHLCV data from the Bitget API and outputs actionable BUY / SELL / HOLD signals using the exact same momentum ranking and quality filters as the backtest.
+
+```bash
+# Generate signals (respects 20-day rebalance schedule)
+python3 src/signal_agent.py
+
+# Force a rebalance regardless of schedule
+python3 src/signal_agent.py --force
+
+# Preview signals without updating portfolio state
+python3 src/signal_agent.py --dry-run
+```
+
+The agent persists portfolio state between runs in `reports/portfolio_state.json` and writes the latest signals to `reports/latest_signals.json`. It tracks per-position stop-losses (8.5%), portfolio drawdown hard stops (15%), and cooling-off periods automatically.
+
 ## Project Structure
 
 ```
@@ -50,7 +67,8 @@ alpha-catalyst-momentum/
 ├── requirements.txt             # Dependencies (stdlib only)
 ├── .gitignore
 ├── src/
-│   ├── backtest.py              # Main backtest engine (~350 lines)
+│   ├── backtest.py              # Main backtest engine (~400 lines)
+│   ├── signal_agent.py          # Live signal generator (BUY/SELL/HOLD)
 │   ├── save_data.py             # Bitget API data fetcher
 │   └── save_batch.py            # Batch CSV data processor
 ├── data/                        # Daily OHLCV CSVs (200 days each)
@@ -65,7 +83,9 @@ alpha-catalyst-momentum/
 │   └── RCOSTUSDT.csv
 └── reports/
     ├── backtest_results.json    # Full results with equity curve & trade log
-    └── backtest_report.html     # Interactive HTML report with charts
+    ├── backtest_report.html     # Interactive HTML report with charts
+    ├── latest_signals.json      # Most recent signal output
+    └── portfolio_state.json     # Persistent portfolio state between runs
 ```
 
 ## Quick Start
@@ -76,6 +96,9 @@ python3 src/backtest.py
 
 # Results are saved to reports/backtest_results.json
 # Open reports/backtest_report.html in a browser for the interactive report
+
+# Run the live signal agent
+python3 src/signal_agent.py --force
 ```
 
 ## Backtest Configuration
