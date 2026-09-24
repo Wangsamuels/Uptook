@@ -1,4 +1,4 @@
-#Uptook Alpha Catalyst Momentum v2
+## Uptook Alpha Catalyst Momentum v2
 
 
 A quantitative momentum rotation strategy for Bitget rTokens (tokenized US equities), built in Python with zero external dependencies.
