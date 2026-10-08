@@ -2,8 +2,9 @@
 """
 Alpha Catalyst Momentum v2 — Full Backtest Engine
 ===================================================
-Weekly-rebalancing momentum rotation strategy:
-  1. Every 5 trading days, rank stocks by composite momentum
+Monthly (20-day) momentum rotation strategy:
+  1. Every 20 trading days, rank stocks by composite momentum
+     (ranked on the PRIOR day's close, executed at today's open — no look-ahead)
   2. Select top-N stocks that pass quality filters
   3. Equal-weight allocation across selected stocks
   4. 50-day SMA trend filter + overextension filter
@@ -13,7 +14,8 @@ Backtest config:
   - $20,000 starting capital
   - 90 trading day backtest (60 IS + 30 OOS)
   - 5 bps slippage, $0 commissions, long-only
-  - Max 3 holdings, ~33% invested capital each (~50% max exposure)
+  - Max 5 holdings, equal weight, 90% of capital invested
+  - 8.5% per-position stop-loss (3-day grace), 15% portfolio drawdown hard stop
 """
 
 import csv
@@ -205,8 +207,13 @@ class BacktestEngine:
         if self.cooling_off_until is not None and day_idx <= self.cooling_off_until:
             return
 
-        # Rank and select top-N
-        ranked = self.rank_stocks(date)
+        # Rank on the PREVIOUS trading day's close to avoid look-ahead bias:
+        # the signal must be known before we buy at today's open.
+        date_idx = self.trading_dates.index(date)
+        if date_idx == 0:
+            return
+        signal_date = self.trading_dates[date_idx - 1]
+        ranked = self.rank_stocks(signal_date)
         target_symbols = set()
         for sym, score in ranked[:MAX_POSITIONS]:
             target_symbols.add(sym)
@@ -218,7 +225,9 @@ class BacktestEngine:
 
         # Calculate target allocation
         port_val = self.portfolio_value(date)
-        per_position = (port_val * INVESTMENT_PCT) / max(len(target_symbols), 1)
+        # Fixed slot size (90% / MAX_POSITIONS = 18% each), same as signal_agent.py.
+        # If fewer than 5 names qualify, the unused slots stay in cash.
+        per_position = (port_val * INVESTMENT_PCT) / MAX_POSITIONS
 
         # Buy new targets / adjust existing
         for sym in target_symbols:
@@ -285,7 +294,7 @@ class BacktestEngine:
         })
 
     def check_stop_losses(self, day_idx, date):
-        """Check each position against the 2.5% per-position stop-loss.
+        """Check each position against the 8.5% per-position stop-loss.
         Only activates after STOP_LOSS_GRACE_DAYS to avoid whipsaw."""
         stopped = []
         for sym in list(self.holdings.keys()):
@@ -516,10 +525,12 @@ def main():
     is_metrics = compute_metrics(is_returns, is_trades, is_equity, "In-Sample")
     oos_metrics = compute_metrics(oos_returns, oos_trades, oos_equity, "Out-of-Sample")
 
-    if is_metrics.get('sharpe_ratio', 0) != 0:
-        oos_is_ratio = oos_metrics.get('sharpe_ratio', 0) / is_metrics['sharpe_ratio']
-    else:
-        oos_is_ratio = 0.0
+    is_sharpe = is_metrics.get('sharpe_ratio', 0)
+    oos_sharpe = oos_metrics.get('sharpe_ratio', 0)
+    # Bitget Track 1 decay alert fires when OOS Sharpe < 0.5 x IS Sharpe.
+    decay_pass = oos_sharpe >= 0.5 * is_sharpe
+    # The ratio is only meaningful when IS Sharpe is positive.
+    oos_is_ratio = oos_sharpe / is_sharpe if is_sharpe > 0 else None
 
     rolling_sharpe = compute_rolling_sharpe(daily_returns, 30)
     rolling_sharpe_data = []
@@ -548,13 +559,17 @@ def main():
         print(f"  Avg Trade P&L:     ${metrics['avg_trade_pnl']:.2f}")
 
     print(f"\n--- Validation ---")
-    print(f"  OOS Sharpe / IS Sharpe = {oos_is_ratio:.4f}")
-    print(f"  Requirement: ≥ 0.50")
-    print(f"  {'✓ PASS' if oos_is_ratio >= 0.5 else '✗ FAIL'}")
+    print(f"  IS Sharpe = {is_sharpe:.4f} | OOS Sharpe = {oos_sharpe:.4f}")
+    if oos_is_ratio is not None:
+        print(f"  OOS Sharpe / IS Sharpe = {oos_is_ratio:.4f}")
+    else:
+        print(f"  OOS/IS ratio not meaningful (IS Sharpe <= 0)")
+    print(f"  Rule: alert if OOS Sharpe < 0.5 x IS Sharpe ({0.5 * is_sharpe:.4f})")
+    print(f"  {'✓ PASS (no decay alert)' if decay_pass else '✗ FAIL (decay alert)'}")
 
     results = {
         'config': {
-            'strategy': 'Weekly-rebalancing momentum rotation',
+            'strategy': 'Monthly (20-day) momentum rotation',
             'initial_capital': INITIAL_CAPITAL,
             'slippage_bps': SLIPPAGE_BPS,
             'max_positions': MAX_POSITIONS,
@@ -572,7 +587,8 @@ def main():
             'full': full_metrics,
             'in_sample': is_metrics,
             'out_of_sample': oos_metrics,
-            'oos_is_sharpe_ratio': round(oos_is_ratio, 4),
+            'oos_is_sharpe_ratio': round(oos_is_ratio, 4) if oos_is_ratio is not None else None,
+            'oos_decay_check_pass': decay_pass,
         },
         'equity_curve': equity_curve,
         'trade_log': trade_log,

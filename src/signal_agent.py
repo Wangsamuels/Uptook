@@ -270,12 +270,19 @@ def check_portfolio_drawdown(holdings, all_data, state):
 
 def generate_signals(all_data, state, force_rebalance=False):
     """Generate actionable trading signals."""
-    holdings = state.get('holdings', {})
+    # Work on a copy: the real holdings/cash are updated in update_state_from_signals.
+    holdings = dict(state.get('holdings', {}))
+    sim_cash = state.get('cash', INITIAL_CAPITAL)
     last_rebalance = state.get('last_rebalance_date', None)
-    trading_day = state.get('trading_day_count', 0)
     cooling_off_until = state.get('cooling_off_until', None)
 
     today = max(all_data[sym][-1]['date'] for sym in all_data)
+
+    # Count trading days by new candle dates, not by script runs, so running
+    # the agent twice on the same day does not advance the 20-day schedule.
+    new_day = state.get('last_run_date') != today
+    trading_day = state.get('trading_day_count', 0) + (1 if new_day else 0)
+    last_rebalance_day = state.get('last_rebalance_day')
 
     signals = {
         'date': today,
@@ -288,6 +295,8 @@ def generate_signals(all_data, state, force_rebalance=False):
         'drawdown_check': {},
         'rebalance_triggered': False,
         'next_rebalance_in': None,
+        'trading_day': trading_day,
+        'rebalance_count': state.get('rebalance_count', 0),
     }
 
     # 1. Full ranking for visibility
@@ -308,10 +317,11 @@ def generate_signals(all_data, state, force_rebalance=False):
             'entry_price': s['entry_price'],
         })
         if s['symbol'] in holdings:
+            sim_cash += holdings[s['symbol']]['shares'] * s['current_price']
             del holdings[s['symbol']]
 
     # 3. Check portfolio drawdown
-    dd_check = check_portfolio_drawdown(holdings, all_data, state)
+    dd_check = check_portfolio_drawdown(holdings, all_data, dict(state, cash=sim_cash))
     signals['drawdown_check'] = dd_check
 
     if dd_check['hard_stop_triggered']:
@@ -345,9 +355,14 @@ def generate_signals(all_data, state, force_rebalance=False):
         return signals
 
     # 5. Determine if rebalance is due
-    days_since = trading_day % REBALANCE_FREQ if last_rebalance else REBALANCE_FREQ
-    rebalance_due = (days_since == 0) or force_rebalance or (last_rebalance is None)
-    signals['next_rebalance_in'] = REBALANCE_FREQ - (trading_day % REBALANCE_FREQ) if not rebalance_due else 0
+    if last_rebalance_day is not None:
+        days_since = trading_day - last_rebalance_day
+    elif last_rebalance:
+        days_since = trading_day % REBALANCE_FREQ or REBALANCE_FREQ  # legacy state files
+    else:
+        days_since = REBALANCE_FREQ
+    rebalance_due = force_rebalance or (last_rebalance is None) or (days_since >= REBALANCE_FREQ)
+    signals['next_rebalance_in'] = 0 if rebalance_due else REBALANCE_FREQ - days_since
 
     if not rebalance_due:
         # Just report current state, no rotation
@@ -379,6 +394,7 @@ def generate_signals(all_data, state, force_rebalance=False):
 
     # 6. REBALANCE: determine target portfolio
     signals['rebalance_triggered'] = True
+    signals['rebalance_count'] = state.get('rebalance_count', 0) + 1
     target_symbols = set()
     for c in ranked[:MAX_POSITIONS]:
         target_symbols.add(c['symbol'])
@@ -489,6 +505,8 @@ def update_state_from_signals(state, signals):
 
         if action['action'] == 'SELL':
             if sym in holdings:
+                price = action.get('current_price') or holdings[sym]['entry_price']
+                state['cash'] = state.get('cash', INITIAL_CAPITAL) + holdings[sym]['shares'] * price
                 del holdings[sym]
 
         elif action['action'] == 'BUY':
@@ -501,6 +519,7 @@ def update_state_from_signals(state, signals):
             if price and price > 0:
                 shares = math.floor(per_position / price)
                 if shares > 0:
+                    state['cash'] = state.get('cash', INITIAL_CAPITAL) - shares * price
                     holdings[sym] = {
                         'shares': shares,
                         'entry_price': price,
@@ -513,11 +532,14 @@ def update_state_from_signals(state, signals):
         if holdings[sym].get('entry_date') != today:
             holdings[sym]['days_held'] = holdings[sym].get('days_held', 0) + 1
 
+    state['holdings'] = holdings
+    state['trading_day_count'] = signals['trading_day']
+    state['last_run_date'] = today
+
     if signals['rebalance_triggered']:
         state['last_rebalance_date'] = today
-
-    state['holdings'] = holdings
-    state['trading_day_count'] = state.get('trading_day_count', 0) + 1
+        state['last_rebalance_day'] = signals['trading_day']
+        state['rebalance_count'] = signals['rebalance_count']
 
     # Update high water mark
     dd = signals.get('drawdown_check', {})
@@ -565,7 +587,7 @@ def print_signals(signals):
     # Actions
     print(f"\n  {'─' * 66}")
     print(f"  ACTION SIGNALS" +
-          (f" (Rebalance #{signals.get('rebalance_count', '?')})" if signals['rebalance_triggered'] else ""))
+          (f" (Rebalance #{signals['rebalance_count']})" if signals['rebalance_triggered'] else ""))
     print(f"  {'─' * 66}")
 
     buys = [a for a in signals['actions'] if a['action'] == 'BUY']
